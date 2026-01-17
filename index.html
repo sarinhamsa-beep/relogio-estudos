@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Relógio de Estudos</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 16px;
+      background: #fafafa;
+    }
+    h2 { margin-top: 24px; }
+    select, button {
+      padding: 6px;
+      margin: 4px 0;
+    }
+    .timer {
+      font-size: 1.2em;
+      font-weight: bold;
+    }
+    .box {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 12px;
+      background: #fff;
+    }
+  </style>
+</head>
+<body>
+
+<h1>⏱️ Relógio de Estudos</h1>
+
+<div class="box">
+  <label>Importar blocos e matérias (Excel):</label><br />
+  <input type="file" id="excel" accept=".xlsx,.xls" />
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+  let running = false;
+  let lastTick = null;
+  let currentSeconds = 0;
+  let pomodoro = null;
+
+  const todayKey = new Date().toISOString().slice(0,10);
+
+  const data = JSON.parse(localStorage.getItem('studyData')) || {
+    history: {}, // por dia
+    cadastro: {}
+  };
+
+  if (!data.history[todayKey]) {
+    data.history[todayKey] = { daily: 0, blocos: {}, materias: {} };
+  }
+
+  function startPause() {
+    running = !running;
+    if (running) lastTick = Date.now();
+  }
+
+  function startPomodoro(min=25) {
+    clearInterval(pomodoro);
+    let remaining = min * 60;
+    pomodoro = setInterval(() => {
+      if (remaining <= 0) {
+        clearInterval(pomodoro);
+        alert('Pomodoro finalizado');
+        return;
+      }
+      remaining--;
+    }, 1000);
+  }
+
+  function tick() {
+    if (!running) return;
+    const now = Date.now();
+    const diff = Math.floor((now - lastTick) / 1000);
+    if (diff <= 0) return;
+
+    lastTick = now;
+    currentSeconds += diff;
+
+    const bloco = document.getElementById('bloco').value;
+    const materia = document.getElementById('materia').value;
+    const day = data.history[todayKey];
+
+    day.daily += diff;
+    day.blocos[bloco] = (day.blocos[bloco] || 0) + diff;
+    day.materias[materia] = (day.materias[materia] || 0) + diff;
+
+    localStorage.setItem('studyData', JSON.stringify(data));
+    render();
+  }
+
+  function format(sec) {
+    const h = String(Math.floor(sec / 3600)).padStart(2, '0');
+    const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
+    const s = String(sec % 60).padStart(2, '0');
+    return `${h}:${m}:${s}`;
+  }
+
+  function render() {
+    const day = data.history[todayKey];
+    document.getElementById('current').innerText = format(currentSeconds);
+    document.getElementById('daily').innerText = format(day.daily);
+
+    document.getElementById('blocos').innerText = Object.entries(day.blocos)
+      .map(([k,v]) => `${k}: ${format(v)}`).join('
+');
+
+    document.getElementById('materias').innerText = Object.entries(day.materias)
+      .map(([k,v]) => `${k}: ${format(v)}`).join('
+');
+  }
+    }
+  }
+
+  function resetDay() {
+    if (!confirm('Resetar o tempo diário?')) return;
+    data.daily = 0;
+    localStorage.setItem('studyData', JSON.stringify(data));
+    render();
+  }
+
+  function format(sec) {
+    const h = String(Math.floor(sec / 3600)).padStart(2, '0');
+    const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
+    const s = String(sec % 60).padStart(2, '0');
+    return `${h}:${m}:${s}`;
+  }
+
+  function render() {
+    document.getElementById('current').innerText = format(currentSeconds);
+    document.getElementById('daily').innerText = format(data.daily);
+
+    document.getElementById('blocos').innerText = Object.entries(data.blocos)
+      .map(([k,v]) => `${k}: ${format(v)}`).join('\n');
+
+    document.getElementById('materias').innerText = Object.entries(data.materias)
+      .map(([k,v]) => `${k}: ${format(v)}`).join('\n');
+  }
+
+  document.getElementById('excel').addEventListener('change', importarExcel);
+
+  function importarExcel(e) {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+
+    reader.onload = function(evt) {
+      const wb = XLSX.read(evt.target.result, { type: 'binary' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+      data.cadastro = {};
+
+      rows.slice(1).forEach(([bloco, materia]) => {
+        if (!bloco || !materia) return;
+        if (!data.cadastro[bloco]) data.cadastro[bloco] = [];
+        data.cadastro[bloco].push(materia);
+      });
+
+      atualizarSelects();
+      localStorage.setItem('studyData', JSON.stringify(data));
+    };
+
+    reader.readAsBinaryString(file);
+  }
+
+  function atualizarSelects() {
+    const blocoSel = document.getElementById('bloco');
+    const materiaSel = document.getElementById('materia');
+
+    blocoSel.innerHTML = '';
+    Object.keys(data.cadastro).forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b;
+      opt.textContent = b;
+      blocoSel.appendChild(opt);
+    });
+
+    blocoSel.onchange = () => {
+      materiaSel.innerHTML = '';
+      (data.cadastro[blocoSel.value] || []).forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = m;
+        materiaSel.appendChild(opt);
+      });
+    };
+
+    blocoSel.onchange();
+  }
+
+  atualizarSelects();
+  setInterval(tick, 1000);
+  render();
+</script>
+
+</body>
+</html>
