@@ -38,13 +38,7 @@
   <button onclick="adicionarManual()">Adicionar</button>
 </div>
 
-<div class="box">
-  <label>Importar blocos e matérias (Excel):</label><br />
-  <input type="file" id="excel" accept=".xlsx,.xls" />
-  <small>Coluna A = Bloco | Coluna B = Matéria</small>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
   let running = false;
   let lastTick = null;
@@ -149,39 +143,7 @@
       .map(([k,v]) => `${k}: ${format(v)}`).join('\n');
   }
 
-  document.getElementById('excel').addEventListener('change', importarExcel);
-
-  function importarExcel(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-
-    reader.onload = function(evt) {
-      const dataBin = new Uint8Array(evt.target.result);
-      const wb = XLSX.read(dataBin, { type: 'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-
-      data.cadastro = data.cadastro || {};
-
-      rows.slice(1).forEach(row => {
-        const bloco = String(row[0]).trim();
-        const materia = String(row[1]).trim();
-        if (!bloco || !materia) return;
-        if (!data.cadastro[bloco]) data.cadastro[bloco] = [];
-        if (!data.cadastro[bloco].includes(materia)) {
-          data.cadastro[bloco].push(materia);
-        }
-      });
-
-      salvarCadastro();
-      atualizarSelects();
-      alert('Importação concluída');
-    };
-
-    reader.readAsArrayBuffer(file);
-  }
+  
 
   function salvarCadastro() {
     localStorage.setItem('studyData', JSON.stringify(data));
