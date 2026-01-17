@@ -32,9 +32,15 @@
 <h1>⏱️ Relógio de Estudos</h1>
 
 <div class="box">
-  <label>Importar blocos e matérias (Excel):</label><br />
-  <input type="file" id="excel" accept=".xlsx,.xls" />
+  <label>Adicionar Bloco e Matéria manualmente:</label><br />
+  <input id="novoBloco" placeholder="Bloco" />
+  <input id="novaMateria" placeholder="Matéria" />
+  <button onclick="adicionarManual()">Adicionar</button>
 </div>
+
+<div class="box">
+  <label>Importar blocos e matérias (Excel):</label><br />
+  <input type="file" id="excel" accept=
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
